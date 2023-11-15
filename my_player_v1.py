@@ -5,9 +5,6 @@ from seahorse.utils.custom_exceptions import MethodNotImplementedError
 from board_abalone import BoardAbalone
 
 
-#Test my_player vs my_player_v1  --> Winner sur 3 gamer my_player
-
-
 
 #Table de début 
 #Optimisation :
@@ -58,17 +55,13 @@ class MyPlayer(PlayerAbalone):
         print(f"Nombre d'actions possibles: {len(current_state.generate_possible_actions())}")
         s = 10
 
-        list_edge = [[0, 0], [0, 1], [0, 7], [0, 8], [1, 0], [1, 7], [1, 8], [2, 0], [2, 8], [3, 8], [5, 8], [6, 0], [6, 8], [7, 0], [7, 7], [7, 8], [8, 0], [8, 1], [8, 7], [8, 8]] 
-
-        current_rep = current_state.get_rep()
-        dim = current_rep.get_dimensions()
-        edge_distance_matrix = precalculate_edge_distances(current_state,dim,list_edge)
+        
         for action in current_state.generate_possible_actions():
             if(s==0):
                 self.plays += 1
                 return best_move
             
-            move_value = minimax_alpha_beta(action.get_next_game_state(), depth, float('-inf'),float("inf"), True, self.transposition_table,edge_distance_matrix,self.plays)
+            move_value = minimax_alpha_beta(action.get_next_game_state(), depth, float('-inf'),float("inf"), True, self.transposition_table,self.plays)
             #move_value =  minimax(action.get_next_game_state(), depth, True)
             if move_value > best_value:
                 best_value = move_value
@@ -81,39 +74,6 @@ class MyPlayer(PlayerAbalone):
 
 
 
-
-def precalculate_edge_distances(game_state: GameState,dimensions, list_edge):
-    #On va précalculer les distances des bords de chaque case
-    max_x, max_y = dimensions
-    edge_distance_matrix = [[0 for _ in range(max_y)] for _ in range(max_x)]
-    string =""
-    current_rep = game_state.get_rep()
-    b = current_rep.get_env()
-    board = BoardAbalone(b,dimensions)
-    grid_data=board.get_grid() 
-
-
-    for i in range(9):
-            print(i)
-            if i % 2 == 1:
-                string += " "
-            for j in range(9):
-                if grid_data[i][j] == BoardAbalone.FORBIDDEN_POS or i in [0,8] or j in  [0,8]:
-                    string += "-1"
-                    edge_distance_matrix[i][j] = 0              
-                else:
-                    dist_to_edge = min(
-                    min(i, max_x - 1 -i),  # Distance à l'horizontale, plus petite distance du bord gauche ou droit
-                    min(j, max_y - 1 - j)   # Distance à la verticale
-                    )
-                    edge_distance_matrix[i][j] = dist_to_edge
-                    string += str(edge_distance_matrix[i][j])+" "
-
-            string += "\n"
-    
-    print(string)
-
-    return edge_distance_matrix
 
 def total_distance(positions):
     total_dist = 0
@@ -216,19 +176,7 @@ def is_in_line(pos1, pos2, board, player_id):
 # 1) Rush le centre + dispersement
 # 2)Rush ennemi en formation
 
-#Action nul 
-#--> Avoir une ligne perpendiculaire à une ligne ennemie 
-
-
-#Action bien
-#--> Avoir une ligne 3 en face  des ennemies 
-#--> Percer une ligne ennemie
-
-#TODO
-
-#Spécifier l'heuristique d'action (faible cout, variant selon l'avancé de la game) pour essayer d'augmenter l'exploration des états 
-
-def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
+def evaluate_state(game_state: GameState,plays) -> float:
     # Logic to evaluate the state
     
     player = game_state.next_player
@@ -240,28 +188,7 @@ def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
     dim = current_rep.get_dimensions()
     
     
-#  XX_ _ _ _ _ XX
-#  X_ _ _ _ _ _ XX
-# X_ _ _ _ _ _ _ X
-#  _ _ _ _ _ _ _ _ X
-# _ _ _ _ _ _ _ _ _
-#  _ _ _ _ _ _ _ _ X
-# X_ _ _ _ _ _ _ X
-#  X_ _ _ _ _ _ XX
-#   XX_ _ _ _ _ XX
-
-    #board = BoardAbalone(b,dim)
-    #grid_data=board.get_grid() 
-    # for i in range(9):
-    #     for j in range(9):
-    #         if grid_data[i][j] == BoardAbalone.FORBIDDEN_POS:
-    #             string += "  "
-    #             list_edge.append([i,j])
-    
-    # Define the center of the board
     center = (dim[0]//2, dim[1]//2)
-    #list_edge = [[0, 0], [0, 1], [0, 7], [0, 8], [1, 0], [1, 7], [1, 8], [2, 0], [2, 8], [3, 8], [5, 8], [6, 0], [6, 8], [7, 0], [7, 7], [7, 8], [8, 0], [8, 1], [8, 7], [8, 8]] 
-
     
     distance_factor = 0.5  
     distance_factor_e = 1
@@ -276,9 +203,7 @@ def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
     distance_factor_e += plays *0.04
     
 
-    #Favorise une formation groupée, diminiue au cours de la game 
-    dispersement_factor -= plays *0.001
-    if(dispersement_factor < 0) : dispersement_factor = 0.01
+    #Favorise une formation groupée
     list_player = [ (i,j) for i,j in list(b.keys()) if b.get((i, j), None).get_owner_id() == player.get_id()]
     score -= total_distance(list_player) *dispersement_factor
 
@@ -294,8 +219,7 @@ def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
             
             p = b.get((i, j), None)
             distance = manhattanDist(center,[i,j])
-            #distance_edge = distance_to_closest_edge([i,j],list_edge)   #Fort cout en complexité
-            #distance_edge = edge_distance_matrix[i][j]
+            
             if p.get_owner_id() == player.get_id():
 
                 adjacent_enemies = count_adjacent_enemies((i, j), b, player.get_id())
@@ -310,7 +234,6 @@ def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
 
                 #Favorise position offensive --> Proche adversaire, proche bord
                 
-                #score += distance_edge * distance_factor  #Favorise une grande distance des bords (raproche du centre mais surtout écarte du bord)
                 
                 
                 score -= distance_factor * distance   #Favorise un mvt qui rapproche les pieces vers le centre,  V1 
@@ -321,6 +244,7 @@ def evaluate_state(game_state: GameState,edge_distance_matrix,plays) -> float:
                 #score -= distance_edge * distance_factor #Favorise un mvt qui eloigne les pieces advairse du centre
                 score -=50 #Decrease for every piece of the oponent
 
+
     return  score
 
 def manhattanDist(A, B):
@@ -328,7 +252,7 @@ def manhattanDist(A, B):
             return dist
 
 
-def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transposition_table,edge_distance_matrix,plays):
+def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transposition_table,plays):
 
     state_hash = hash(str(game_state.get_rep().get_env()))
 
@@ -336,7 +260,7 @@ def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transpo
         return transposition_table[state_hash]
 
     if depth == 0 or game_state.is_done():
-        value =  evaluate_state(game_state,edge_distance_matrix,plays)
+        value =  evaluate_state(game_state,plays=plays)
         transposition_table[state_hash] = value
         return value
 
@@ -344,14 +268,14 @@ def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transpo
         
         max_eval = float('-inf')
         possible_actions = game_state.generate_possible_actions()
-        scored_actions = [(action, evaluate_move(action.get_next_game_state(),edge_distance_matrix,plays)) for action in possible_actions]
+        scored_actions = [(action, evaluate_move(action.get_next_game_state(),plays=plays)) for action in possible_actions]
         scored_actions.sort(key=lambda x: x[1], reverse=True)#Descending
         s = 10
         for action in scored_actions:
             if(s==0):
                 return max_eval
             s -= 1
-            eval = minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, False,transposition_table,edge_distance_matrix,plays)
+            eval = minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, False,transposition_table,plays)
             max_eval = max(max_eval, eval)
             alpha = max(alpha, eval)
             if beta <= alpha:
@@ -363,14 +287,14 @@ def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transpo
         min_eval = float('inf')
         possible_actions = game_state.generate_possible_actions()
 
-        scored_actions = [(action, evaluate_move(action.get_next_game_state(),edge_distance_matrix,plays)) for action in possible_actions]
+        scored_actions = [(action, evaluate_move(action.get_next_game_state(),plays=plays)) for action in possible_actions]
         scored_actions.sort(key=lambda x: x[1]) #Ascending
         s = 10
         for action in scored_actions:
             if(s==0):
                 return min_eval
             s -= 1
-            eval = minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, True, transposition_table,edge_distance_matrix,plays)
+            eval = minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, True, transposition_table,plays)
             min_eval = min(min_eval, eval)
             beta = min(beta, eval)
             if beta <= alpha:
@@ -379,7 +303,7 @@ def minimax_alpha_beta(game_state, depth, alpha, beta, maximizing_player,transpo
         return min_eval
 
 
-def evaluate_move( game_state,edge_distance_matrix,plays):
+def evaluate_move( game_state,plays):
     # Ici, vous pouvez définir une heuristique rapide pour évaluer le mouvement
     # Par exemple:
-    return evaluate_state(game_state,edge_distance_matrix,plays)
+    return evaluate_state(game_state,plays)
