@@ -204,6 +204,8 @@ def evaluate_state(game_state: GameState,plays) -> float:
     
 
     #Favorise une formation groupée
+    dispersement_factor -= plays *0.001
+    if(dispersement_factor < 0) : dispersement_factor = 0.01
     list_player = [ (i,j) for i,j in list(b.keys()) if b.get((i, j), None).get_owner_id() == player.get_id()]
     score -= total_distance(list_player) *dispersement_factor
 
