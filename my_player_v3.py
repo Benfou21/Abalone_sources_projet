@@ -5,15 +5,6 @@ from seahorse.utils.custom_exceptions import MethodNotImplementedError
 from board_abalone import BoardAbalone
 
 
-#Test my_player vs my_player_v1  --> Winner sur 3 gamer my_player
-
-
-
-#Table de début 
-#Optimisation :
-#-Solution acceptable
-#-Structure de données plus rapide
-# etc...
 class MyPlayer(PlayerAbalone):
     """
     Player class for Abalone game.
@@ -33,10 +24,10 @@ class MyPlayer(PlayerAbalone):
         """
         super().__init__(piece_type,name,time_limit,*args)
         self.transposition_table = {}
-        self.plays = 0
+        self.plays_count = 0
         self.nb_action = 20
         self.center = (0,0)
-        self.list_edge = [[0, 0], [0, 1], [0, 7], [0, 8], [1, 0], [1, 7], [1, 8], [2, 0], [2, 8], [3, 8], [5, 8], [6, 0], [6, 8], [7, 0], [7, 7], [7, 8], [8, 0], [8, 1], [8, 7], [8, 8]] 
+        self.list_edge= [(0, 0),(0, 1), (0, 7), (0, 8), (1, 0), (1, 7), (1, 8), (2, 0), (2, 8), (3, 8), (5, 8), (6, 0), (6, 8), (7, 0), (7, 7), (7, 8), (8, 0), (8, 1), (8, 7), (8, 8)] 
 
         
         
@@ -57,25 +48,27 @@ class MyPlayer(PlayerAbalone):
             Action: selected feasible action
         """
         
-        print("plays" + str(self.plays))
+        print("plays" + str(self.plays_count))
         best_move = None
         best_value = float('-inf')
-        depth = 3
+        
         print(f"Nombre d'actions possibles: {len(current_state.generate_possible_actions())}")
         
 
-        
         current_rep = current_state.get_rep()
         dim = current_rep.get_dimensions()
         self.center =(dim[0]//2, dim[1]//2)
-        #edge_distance_matrix = self.precalculate_edge_distances(current_state,dim,list_edge)
-        edge_distance_matrix =None
+        
+        
         possible_actions = current_state.generate_possible_actions()
         
 
-        
+        print(self.plays_count)
         selected_actions = self.select_move(current_state, possible_actions)
-        if( self.plays < 5): #Jusqu'à 4 coûts on souhaite des coûts qui dépasse un mvt d'une pièce 
+
+        print(len(selected_actions))
+
+        if( self.plays_count < 5): #Jusqu'à 4 coûts on souhaite des coûts qui dépasse un mvt d'une pièce 
             selected_actions = self.select_move_on_moves(current_state, selected_actions)
             
         print(f"Nombre d'actions selectionnées: {len(selected_actions)}")
@@ -85,13 +78,19 @@ class MyPlayer(PlayerAbalone):
         
         s = self.nb_action
         for action in selected_actions:
-        
+            depth = 3
             if(s==0):
-                self.plays += 1
+                self.plays_count += 1
                 return best_move
             s -= 1
+
+            #Si la situation est avantageuse augmenter la profondeur de 2
+                
+            if (self.is_strategic_move(action.get_next_game_state()) ):
+                print("---------AUGMENTED-------------")
+                depth += 1
             
-            move_value = self.minimax_alpha_beta(action.get_next_game_state(), depth, float('-inf'),float("inf"), True, self.transposition_table,edge_distance_matrix,self.plays)
+            move_value = self.minimax_alpha_beta(action.get_next_game_state(), depth, float('-inf'),float("inf"), True, self.transposition_table,self.plays_count)
             #move_value =  minimax(action.get_next_game_state(), depth, True)
             if move_value > best_value:
                 best_value = move_value
@@ -100,45 +99,13 @@ class MyPlayer(PlayerAbalone):
 
         print(best_move)
         print("return")
-        self.plays += 1
+        self.plays_count += 1
         return best_move
 
 
 
 
 
-    def precalculate_edge_distances(self, game_state: GameState,dimensions, list_edge):
-        #On va précalculer les distances des bords de chaque case
-        max_x, max_y = dimensions
-        edge_distance_matrix = [[0 for _ in range(max_y)] for _ in range(max_x)]
-        string =""
-        current_rep = game_state.get_rep()
-        b = current_rep.get_env()
-        board = BoardAbalone(b,dimensions)
-        grid_data=board.get_grid() 
-
-
-        for i in range(9):
-                #print(i)
-                if i % 2 == 1:
-                    string += " "
-                for j in range(9):
-                    if grid_data[i][j] == BoardAbalone.FORBIDDEN_POS or i in [0,8] or j in  [0,8]:
-                        string += "-1"
-                        edge_distance_matrix[i][j] = 0              
-                    else:
-                        dist_to_edge = min(
-                        min(i, max_x - 1 -i),  # Distance à l'horizontale, plus petite distance du bord gauche ou droit
-                        min(j, max_y - 1 - j)   # Distance à la verticale
-                        )
-                        edge_distance_matrix[i][j] = dist_to_edge
-                        string += str(edge_distance_matrix[i][j])+" "
-
-                string += "\n"
-        
-        #print(string)
-
-        return edge_distance_matrix
 
     def total_distance(self,positions):
         total_dist = 0
@@ -177,19 +144,6 @@ class MyPlayer(PlayerAbalone):
                 if p is not None and p.get_owner_id() != player_id:
                     count += 1
         return count
-    
-
-    def count_adjacent_enemies_near_edge(self,position, board, player_id):
-        adjacent_positions = self.get_adjacent_positions(position)
-        count = 0
-        for adj_position in adjacent_positions:
-            if adj_position in board:
-                p = board[adj_position]
-                if p is not None and p.get_owner_id() != player_id:
-                    e_adjacent_positions = self.get_adjacent_positions(adj_position)
-                    if e_adjacent_positions in self.liste_edge :
-                        count += 1
-        return count
 
     # Fonction pour compter les pièces ennemies adjacentes sachant que les pieces sont en formation
     def count_adjacent_enemies_in_formation(self,position, board, player_id):
@@ -200,6 +154,20 @@ class MyPlayer(PlayerAbalone):
                 p = board[adj_position]
                 if p is not None and p.get_owner_id() != player_id and self.is_in_formation(position, board, player_id):
                     count += 1
+        return count
+    
+    def count_adjacent_enemies_near_edge(self,position, board, player_id):
+        adjacent_positions = self.get_adjacent_positions(position)
+        count = 0
+        for adj_position in adjacent_positions:
+            if adj_position in board:
+                p = board[adj_position]
+                if p is not None and p.get_owner_id() != player_id:
+                    e_adjacent_positions = self.get_adjacent_positions(adj_position)
+                    
+                    if any(elem in self.list_edge for elem in e_adjacent_positions): #Si un des voisins est le bord
+                        print("YESS")
+                        count += 1
         return count
 
 
@@ -254,42 +222,8 @@ class MyPlayer(PlayerAbalone):
                 return True
 
         return False
-
-
-
-    def is_line(self,positions, board, player_id, who):  #who == true --> player , else --> ennemy
-        # Vérifie si toutes les positions sont occupées par des pièces du joueur who
-        if(who):
-            return all(board.get(pos).get_owner_id() == player_id for pos in positions if pos in board)
-        else :
-            return all(board.get(pos).get_owner_id() != player_id for pos in positions if pos in board)
-        
-
-    def is_position_in_player_line(self,position, board, player_id):
-        # Vérifie si la position est dans une ligne de pièces du joueur
-        directions = [(1, 0), (0, 1), (-1, 0), (0, -1)] # Directions pour lignes horizontales et verticales
-        for di, dj in directions:
-            line_positions = [(position[0] + k * di, position[1] + k * dj) for k in range(-2, 3)] # Vérifiez 5 positions pour couvrir les lignes de 3
-            if self.is_line(line_positions, board, player_id, True):
-                return True
-        return False
-
-    def find_perpendicular_enemy_lines(self,position, board, player_id):
-        i, j = position
-        perpendicular_lines = 0
-
-        if self.is_position_in_player_line(position, board, player_id):  #Si la piece se trouve dans une ligne 
-            # Directions perpendiculaires
-            perpendicular_directions = [(0, 1), (1, 0), (0, -1), (-1, 0)]
-            for di, dj in perpendicular_directions:
-                enemy_line = [(i + k * di, j + k * dj) for k in range(1, 3)]
-                if self.is_line(enemy_line, board, player_id, False):     #Si la ligne du joueur est perpendiculaire à une ligne ennemie
-                    perpendicular_lines += 1
-
-        return perpendicular_lines
     
 
-    #Retourne True is une piece du joueur se trouve a coté d'une piece ennemi se trouvant sur le bord du board
     def is_strategic_move(self,game_state: GameState):
 
         current_rep = game_state.get_rep()
@@ -306,23 +240,11 @@ class MyPlayer(PlayerAbalone):
 
         return False
 
-    # Le but serait maintenant de faire varier les h selon l'état du jeu 
-    # 1) Rush le centre + dispersement
-    # 2)Rush ennemi en formation
-
-    #Action nul 
-    #--> Avoir une ligne perpendiculaire à une ligne ennemie 
 
 
-    #Action bien
-    #--> Avoir une ligne 3 en face  des ennemies 
-    #--> Percer une ligne ennemie
 
-    #TODO
-
-    #Spécifier l'heuristique d'action (faible cout, variant selon l'avancé de la game) pour essayer d'augmenter l'exploration des états 
-
-    def evaluate_state(self,game_state: GameState,edge_distance_matrix,plays) -> float:
+   
+    def evaluate_state(self,game_state: GameState,plays) -> float:
         # Logic to evaluate the state
         
         
@@ -334,28 +256,8 @@ class MyPlayer(PlayerAbalone):
         dim = current_rep.get_dimensions()
         
         
-    #  XX_ _ _ _ _ XX
-    #  X_ _ _ _ _ _ XX
-    # X_ _ _ _ _ _ _ X
-    #  _ _ _ _ _ _ _ _ X
-    # _ _ _ _ _ _ _ _ _
-    #  _ _ _ _ _ _ _ _ X
-    # X_ _ _ _ _ _ _ X
-    #  X_ _ _ _ _ _ XX
-    #   XX_ _ _ _ _ XX
-
-        #board = BoardAbalone(b,dim)
-        #grid_data=board.get_grid() 
-        # for i in range(9):
-        #     for j in range(9):
-        #         if grid_data[i][j] == BoardAbalone.FORBIDDEN_POS:
-        #             string += "  "
-        #             list_edge.append([i,j])
-        
-        # Define the center of the board
         center = (dim[0]//2, dim[1]//2)
-        #list_edge = [[0, 0], [0, 1], [0, 7], [0, 8], [1, 0], [1, 7], [1, 8], [2, 0], [2, 8], [3, 8], [5, 8], [6, 0], [6, 8], [7, 0], [7, 7], [7, 8], [8, 0], [8, 1], [8, 7], [8, 8]] 
-
+        
         
         distance_factor = 0.5  
         distance_factor_e = 2
@@ -388,12 +290,10 @@ class MyPlayer(PlayerAbalone):
                 
                 p = b.get((i, j), None)
                 distance = self.manhattanDist(center,[i,j])
-                #distance_edge = distance_to_closest_edge([i,j],list_edge)   #Fort cout en complexité
-                #distance_edge = edge_distance_matrix[i][j]
+                
                 if p.get_owner_id() == self.get_id():
 
                     #Favorise un rapprochement vers l'ennemie
-                    #adjacent_enemies = self.count_adjacent_enemies((i, j), b, self.get_id())
                     adjacent_enemies = self.count_adjacent_enemies_in_formation((i, j), b, self.get_id())
                     score += adjacent_enemies* enemies_factor
 
@@ -402,26 +302,14 @@ class MyPlayer(PlayerAbalone):
                         if k!= i and j != l:
                             score += 1 if l == j else 0
 
-                    #Favorise position offensive --> Proche adversaire, proche bord
-                    
-                    #score += distance_edge * distance_factor  #Favorise une grande distance des bords (raproche du centre mais surtout écarte du bord)
-                    
-                    #pénalise fortement si une ligne est perpendiculaire à une ligne ennemie (pouvant être brisé)
-                    #Marche pas
-                    # if self.find_perpendicular_enemy_lines((i,j), b, self.get_id()) > 0:
-                    #     score -= 2
                 
                     score -= distance_factor * distance   #Favorise un mvt qui rapproche les pieces vers le centre,  V1 
                     score +=50  #count the number of piece of the player
                 else:
 
-                    #favorise fortement si une ligne est perpendiculaire à une ligne ennemie (pouvant être brisé)
-                    #MArche pas 
-                    # if find_perpendicular_enemy_lines((i,j), b, player.get_id()) > 0:
-                    #     score += 5
+                    
                     score += distance * distance_factor_e   #Favorise un mvt qui eloigne les pieces advairse du centre
 
-                    #score -= distance_edge * distance_factor #Favorise un mvt qui eloigne les pieces advairse du centre
                     score -=50 #Decrease for every piece of the oponent
 
         return  score
@@ -431,7 +319,7 @@ class MyPlayer(PlayerAbalone):
                 return dist
 
 
-    def minimax_alpha_beta(self,game_state, depth, alpha, beta, maximizing_player,transposition_table,edge_distance_matrix,plays):
+    def minimax_alpha_beta(self,game_state, depth, alpha, beta, maximizing_player,transposition_table,plays):
 
         state_hash = hash(str(game_state.get_rep().get_env()))
 
@@ -439,12 +327,9 @@ class MyPlayer(PlayerAbalone):
             return transposition_table[state_hash]
 
         if depth == 0 or game_state.is_done():
-            value =  self.evaluate_state(game_state,edge_distance_matrix,plays)
+            value =  self.evaluate_state(game_state,plays)
             transposition_table[state_hash] = value
             return value
-        
-        
-        
 
         if maximizing_player:
             
@@ -454,23 +339,19 @@ class MyPlayer(PlayerAbalone):
             selected_actions = self.select_move(game_state, possible_actions)
             
         
-            scored_actions = [(action, self.evaluate_move(action.get_next_game_state(),edge_distance_matrix,plays)) for action in selected_actions]
+            scored_actions = [(action, self.evaluate_move(action.get_next_game_state(),plays)) for action in selected_actions]
             scored_actions.sort(key=lambda x: x[1], reverse=True)#Descending
         
             s = self.nb_action
             for action in scored_actions:
-
                 if(s==0):
                     return max_eval
                 s -= 1
 
-                #Si la situation est avantageuse augmenter la profondeur de 2
-                # if (self.is_strategic_move(action[0].get_next_game_state()) ):
-                #     print("---------AUGMENTED-------------")
-                #     depth += 2
+                
 
-                #Appel recurisf 
-                eval = self.minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, False,transposition_table,edge_distance_matrix,plays)
+
+                eval = self.minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, False,transposition_table,plays)
                 max_eval = max(max_eval, eval)
                 alpha = max(alpha, eval)
                 if beta <= alpha:
@@ -484,7 +365,7 @@ class MyPlayer(PlayerAbalone):
         
             selected_actions = self.select_move(game_state, possible_actions)
             
-            scored_actions = [(action, self.evaluate_move(action.get_next_game_state(),edge_distance_matrix,plays)) for action in possible_actions]
+            scored_actions = [(action, self.evaluate_move(action.get_next_game_state(),plays)) for action in possible_actions]
             scored_actions.sort(key=lambda x: x[1]) #Ascending
 
             s = self.nb_action
@@ -492,7 +373,10 @@ class MyPlayer(PlayerAbalone):
                 if(s==0):
                     return min_eval
                 s -= 1
-                eval = self.minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, True, transposition_table,edge_distance_matrix,plays)
+
+                
+
+                eval = self.minimax_alpha_beta(action[0].get_next_game_state(), depth-1, alpha, beta, True, transposition_table,plays)
                 min_eval = min(min_eval, eval)
                 beta = min(beta, eval)
                 if beta <= alpha:
@@ -522,8 +406,6 @@ class MyPlayer(PlayerAbalone):
         board2 = game_state2.get_rep().get_env()
 
         moved_pieces_count = 0
-
-        
 
         for i in range(9):
 
@@ -585,7 +467,7 @@ class MyPlayer(PlayerAbalone):
 
 
 
-    def evaluate_move(self,game_state,edge_distance_matrix,plays):
+    def evaluate_move(self,game_state,plays):
         # Ici, vous pouvez définir une heuristique rapide pour évaluer le mouvement
         # Par exemple:
-        return self.evaluate_state(game_state,edge_distance_matrix,plays)
+        return self.evaluate_state(game_state,plays)

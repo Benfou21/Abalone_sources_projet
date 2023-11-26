@@ -1,0 +1,78 @@
+
+
+
+
+my_player_v2 :
+
+ -Heuristique de score : 
+    
+    // [Offensif] Calcul le dispersemment total des pieces ennemi, favorise un fort dispersemment
+    score += total_distance(list_not_player) *dispersement_factor_e
+
+    // [Defense] Calcul le dispersemment total des pieces du joueur, favorise un faible dispersemment
+    score -= self.total_distance(list_player) *dispersement_factor
+
+    Pour chaque piece :
+
+        //[Defense] Calcul la distance de la piece au centre, favorise un rapprochemnt du centre 
+        distance = manhattanDist(center,[i,j])
+        score -= distance_factor * distance
+
+        // [Offensif] Calcul la distance entre la piece et les pieces ennemies, favorise un déplacement offensif
+        adjacent_enemies = count_adjacent_enemies((i, j), b, player.get_id())
+        score += adjacent_enemies* enemies_factor
+
+        // [Offensif] Pour chaque pièce du joueur (permet de pas laisser une piece sortir) 
+        score +=50 
+
+        // [Defense/Offensif] Incrémente le score pour chaque piece en diag avec d'autres pieces
+        for k,l in list(b.keys()) :
+            if k!= i and j != l:
+                score += 1 if l == j else 0
+                
+    --> Inversment pour piece ennemi
+
+ - Tri des actions avec evaluate_state
+ - Exploration des s=10 première actions
+
+ - Heuristique d'action : none 
+
+
+
+
+my_player_v2 :
+
+ -Heuristique de score : 
+    
+    // [Offensif] Calcul le dispersemment total des pieces ennemi, favorise un fort dispersemment
+    score += total_distance(list_not_player) *dispersement_factor_e
+
+    // [Defense] Calcul le dispersemment total des pieces du joueur, favorise un faible dispersemment
+    score -= self.total_distance(list_player) *dispersement_factor
+
+    Pour chaque piece :
+
+        //[Defense] Calcul la distance de la piece au centre, favorise un rapprochemnt du centre 
+        distance = manhattanDist(center,[i,j])
+        score -= distance_factor * distance
+
+        // [Offensif] Calcul la distance entre la piece et les pieces ennemies, incrémente le score si les pieces sont en diag, favorise un déplacement offensif
+        adjacent_enemies = self.count_adjacent_enemies_in_formation((i, j), b, self.get_id())
+        score += adjacent_enemies* enemies_factor
+
+        // [Offensif] Pour chaque pièce du joueur (permet de pas laisser une piece sortir) 
+        score +=50 
+
+        // [Defense/Offensif] Incrémente le score pour chaque piece en diag avec d'autres pieces
+        for k,l in list(b.keys()) :
+            if k!= i and j != l:
+                score += 1 if l == j else 0
+
+    --> Inversment pour piece ennemi
+
+ - Tri des actions avec evaluate_state
+ - Exploration des s=20 première actions  (permis car début plus rapide)
+
+ - Heuristique d'action : 
+    - supprime les actions suicides
+    - Pour les 4 premiers coups, supprime les déplacements d'une piece

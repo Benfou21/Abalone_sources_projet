@@ -240,6 +240,7 @@ def evaluate_state(game_state: GameState,plays) -> float:
                 
                 score -= distance_factor * distance   #Favorise un mvt qui rapproche les pieces vers le centre,  V1 
                 score +=50  #count the number of piece of the player
+                
             else:
                 score += distance * distance_factor_e   #Favorise un mvt qui eloigne les pieces advairse du centre
 
