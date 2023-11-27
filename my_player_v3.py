@@ -3,7 +3,7 @@ from seahorse.game.action import Action
 from seahorse.game.game_state import GameState
 from seahorse.utils.custom_exceptions import MethodNotImplementedError
 from board_abalone import BoardAbalone
-
+import time
 
 class MyPlayer(PlayerAbalone):
     """
@@ -27,8 +27,9 @@ class MyPlayer(PlayerAbalone):
         self.plays_count = 0
         self.nb_action = 20
         self.center = (0,0)
+        self.deph = 3
         self.list_edge= [(0, 0),(0, 1), (0, 7), (0, 8), (1, 0), (1, 7), (1, 8), (2, 0), (2, 8), (3, 8), (5, 8), (6, 0), (6, 8), (7, 0), (7, 7), (7, 8), (8, 0), (8, 1), (8, 7), (8, 8)] 
-
+        self.timing_max = 45
         
         
         
@@ -47,6 +48,8 @@ class MyPlayer(PlayerAbalone):
         Returns:
             Action: selected feasible action
         """
+
+        start_time = time.time()
         
         print("plays" + str(self.plays_count))
         best_move = None
@@ -54,6 +57,8 @@ class MyPlayer(PlayerAbalone):
         
         print(f"Nombre d'actions possibles: {len(current_state.generate_possible_actions())}")
         
+        #Depth
+        d = self.deph
 
         current_rep = current_state.get_rep()
         dim = current_rep.get_dimensions()
@@ -63,12 +68,13 @@ class MyPlayer(PlayerAbalone):
         possible_actions = current_state.generate_possible_actions()
         
 
-        print(self.plays_count)
         selected_actions = self.select_move(current_state, possible_actions)
 
-        print(len(selected_actions))
+        
 
-        if( self.plays_count < 5): #Jusqu'à 4 coûts on souhaite des coûts qui dépasse un mvt d'une pièce 
+        if( self.plays_count < 6): #Jusqu'à 5 coûts on souhaite des coûts qui dépasse un mvt d'une pièce 
+            #Plus petite profondeur pour les premiers coups
+            d = 1
             selected_actions = self.select_move_on_moves(current_state, selected_actions)
             
         print(f"Nombre d'actions selectionnées: {len(selected_actions)}")
@@ -78,13 +84,18 @@ class MyPlayer(PlayerAbalone):
         
         s = self.nb_action
         for action in selected_actions:
-            depth = 3
+
+            if time.time() - start_time > 42:  #On laisse un temps max de 42sec par coup    : [ 15*60 temps max / 20 coups ] (25 - 5 coups de départ)
+                print("Time exceed")
+                return best_move
+            
+            depth = d
             if(s==0):
                 self.plays_count += 1
                 return best_move
             s -= 1
 
-            #Si la situation est avantageuse augmenter la profondeur de 2
+            #Si la situation est avantageuse augmenter la profondeur de 2   // Penser plus loin 
                 
             if (self.is_strategic_move(action.get_next_game_state()) ):
                 print("---------AUGMENTED-------------")
